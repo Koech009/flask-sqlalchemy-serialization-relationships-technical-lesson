@@ -14,6 +14,7 @@ metadata = MetaData(naming_convention=convention)
 
 db = SQLAlchemy(metadata=metadata)
 
+
 class Animal(db.Model):
     __tablename__ = 'animals'
 
@@ -30,6 +31,17 @@ class Animal(db.Model):
     def __repr__(self):
         return f'<Animal {self.name}, a {self.species}>'
 
+# create animal schema for serialization
+
+
+class AnimalSchema(Schema):
+    id = fields.Int(dump_only=True)
+    name = fields.String()
+    species = fields.String()
+    # serialize the zookeeper and enclosure relationships-use nested fields
+    zookeeper = fields.Nested(lambda: ZookeeperSchema(exclude=('animals',)))
+    enclosure = fields.Nested(lambda: EnclosureSchema(exclude=('animals',)))
+
 
 class Zookeeper(db.Model):
     __tablename__ = 'zookeepers'
@@ -39,6 +51,15 @@ class Zookeeper(db.Model):
     birthday = db.Column(db.Date)
 
     animals = db.relationship('Animal', back_populates='zookeeper')
+# Create ZookeeperSchema, inheritting from Schema
+
+
+class ZookeeperSchema(Schema):
+    id = fields.Int(dump_only=True)
+    name = fields.String()
+    birthday = fields.DateTime()
+    # add animals as list of animals that a zookeeper is responsible for
+    animals = fields.List(fields.Nested(AnimalSchema(exclude=('zookeeper',))))
 
 
 class Enclosure(db.Model):
@@ -49,3 +70,11 @@ class Enclosure(db.Model):
     open_to_visitors = db.Column(db.Boolean)
 
     animals = db.relationship('Animal', back_populates='enclosure')
+
+
+# Create EnclosureSchema, inheritting from Schema
+class EnclosureSchema(Schema):
+    id = fields.Int(dump_only=True)
+    environment = fields.String()
+    open_to_visitors = fields.Boolean()
+    animals = fields.List(fields.Nested(AnimalSchema(exclude=('enclosure',))))
